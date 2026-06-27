@@ -1,6 +1,9 @@
 import json
 import requests
 
+from agents.inspector import chat as llm_chat
+
+
 def format_report(report: dict | None) -> str:
     if not report:
         return "暂无巡检数据"
@@ -102,6 +105,7 @@ class TelegramHandler:
 
             else:
                 report = loop.get_latest_report()
-                self.send_message(chat_id, answer_question(text, report))
+                response = llm_chat(text, report)
+                self.send_message(chat_id, response)
         except Exception as e:
             print(f"Webhook error: {e}")

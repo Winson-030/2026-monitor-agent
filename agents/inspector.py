@@ -1,7 +1,7 @@
 import json
 import vertexai
 from vertexai.generative_models import GenerativeModel
-from agents.prompts import SYSTEM_PROMPT, DEEP_INSPECTION_PROMPT
+from agents.prompts import SYSTEM_PROMPT, DEEP_INSPECTION_PROMPT, CHAT_SYSTEM_PROMPT
 
 vertexai.init()
 
@@ -26,3 +26,24 @@ class Inspector:
 请分析并输出 JSON。"""
         response = self.model.generate_content(prompt)
         return json.loads(response.text)
+
+
+def chat(question: str, report: dict | None) -> str:
+    """Natural language chat powered by Gemini 3.5 Flash."""
+    # Build context from latest report
+    if report and report.get("results"):
+        lines = [f"时间: {report.get('timestamp', '?')}", f"区域: {report.get('zone', '?')}", ""]
+        for r in report["results"]:
+            a = r.get("analysis", {})
+            lines.append(f"{r['id']}: status={a.get('status', '?')}, reason={a.get('reason', '')}, "
+                         f"cpu={r.get('cpu', 'N/A')}, memory={r.get('memory', 'N/A')}, disk={r.get('disk', 'N/A')}")
+        context = "\n".join(lines)
+    else:
+        context = "暂无巡检数据"
+
+    model = GenerativeModel(
+        MODELS["chat"],
+        system_instruction=[CHAT_SYSTEM_PROMPT.format(context=context)],
+    )
+    response = model.generate_content(question)
+    return response.text
