@@ -1,2 +1,3 @@
 google-adk>=2.3.0
+sqlalchemy>=2.0.0
 # All existing dependencies from requirements.txt are inherited
