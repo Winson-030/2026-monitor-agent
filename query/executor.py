@@ -1,199 +1,212 @@
-"""Execute gcloud commands to fetch GCP resource data."""
+"""Execute GCP queries using Python client libraries."""
 
-import json
-import subprocess
-from typing import Any, Optional
+from typing import Optional
+from google.cloud import compute_v1
 from .intent import QueryIntent
-
-
-def run_gcloud_command(args: list[str], project: str) -> tuple[bool, Any]:
-    """Execute a gcloud command and return parsed JSON output.
-    
-    Args:
-        args: List of gcloud command arguments
-        project: GCP project ID
-        
-    Returns:
-        Tuple of (success, result) where result is parsed JSON or error message
-    """
-    cmd = ["gcloud"] + args + ["--project", project, "--format", "json", "--quiet"]
-    
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode != 0:
-            error_msg = result.stderr.strip() if result.stderr else "Unknown error"
-            return False, f"gcloud command failed: {error_msg}"
-        
-        if not result.stdout.strip():
-            return True, []
-        
-        return True, json.loads(result.stdout)
-    
-    except subprocess.TimeoutExpired:
-        return False, "Command timed out after 30 seconds"
-    except json.JSONDecodeError:
-        return False, f"Failed to parse JSON output: {result.stdout[:200]}"
-    except Exception as e:
-        return False, f"Error executing command: {str(e)}"
 
 
 def get_vm_count(project: str, zone: Optional[str] = None, status: Optional[str] = None) -> str:
     """Get the count of VMs, optionally filtered by zone and status."""
-    args = ["compute", "instances", "list"]
+    client = compute_v1.InstancesClient()
     
-    if zone:
-        args.extend(["--zones", zone])
+    try:
+        if zone:
+            request = compute_v1.ListInstancesRequest(
+                project=project,
+                zone=zone
+            )
+            vms = client.list(request=request)
+            vm_list = [vm for vm in vms]
+            
+            if status:
+                vm_list = [vm for vm in vm_list if vm.status == status]
+            
+            count = len(vm_list)
+            return f"📊 *VM 数量*\n\n区域 `{zone}` 共有 *{count}* 台 VM"
+        else:
+            # List all zones first
+            zones_client = compute_v1.ZonesClient()
+            zones_request = compute_v1.ListZonesRequest(project=project)
+            zones = zones_client.list(request=zones_request)
+            
+            total_count = 0
+            for zone_obj in zones:
+                request = compute_v1.ListInstancesRequest(
+                    project=project,
+                    zone=zone_obj.name
+                )
+                vms = client.list(request=request)
+                zone_vms = [vm for vm in vms if not status or vm.status == status]
+                total_count += len(zone_vms)
+            
+            return f"📊 *VM 数量*\n\n项目共有 *{total_count}* 台 VM"
     
-    if status:
-        args.extend(["--filter", f"status:{status}"])
-    
-    success, result = run_gcloud_command(args, project)
-    
-    if not success:
-        return f"❌ 查询失败: {result}"
-    
-    vm_list = result if isinstance(result, list) else []
-    count = len(vm_list)
-    
-    if zone:
-        return f"📊 *VM 数量*\n\n区域 `{zone}` 共有 *{count}* 台 VM"
-    else:
-        return f"📊 *VM 数量*\n\n项目共有 *{count}* 台 VM"
+    except Exception as e:
+        return f"❌ 查询失败: {str(e)}"
 
 
 def get_vm_list(project: str, zone: Optional[str] = None, status: Optional[str] = None) -> str:
     """Get a formatted list of VMs."""
-    args = ["compute", "instances", "list"]
+    client = compute_v1.InstancesClient()
     
-    if zone:
-        args.extend(["--zones", zone])
-    
-    if status:
-        args.extend(["--filter", f"status:{status}"])
-    
-    success, result = run_gcloud_command(args, project)
-    
-    if not success:
-        return f"❌ 查询失败: {result}"
-    
-    vm_list = result if isinstance(result, list) else []
-    
-    if not vm_list:
-        return "📝 未找到 VM"
-    
-    lines = ["🖥️ *VM 列表*\n"]
-    lines.append("| 名称 | 状态 | 区域 | 机器类型 |")
-    lines.append("|:---|:---|:---|:---|")
-    
-    for vm in vm_list[:20]:  # Limit to 20 VMs
-        name = vm.get("name", "N/A")
-        vm_status = vm.get("status", "N/A")
-        vm_zone = vm.get("zone", "").split("/")[-1] if "/" in vm.get("zone", "") else vm.get("zone", "N/A")
-        machine_type = vm.get("machineType", "").split("/")[-1] if "/" in vm.get("machineType", "") else vm.get("machineType", "N/A")
+    try:
+        vm_list = []
         
-        status_emoji = {"RUNNING": "🟢", "TERMINATED": "🔴", "STOPPED": "🟡"}.get(vm_status, "⚪")
+        if zone:
+            request = compute_v1.ListInstancesRequest(
+                project=project,
+                zone=zone
+            )
+            vms = client.list(request=request)
+            vm_list = [vm for vm in vms if not status or vm.status == status]
+        else:
+            # List VMs from all zones
+            zones_client = compute_v1.ZonesClient()
+            zones_request = compute_v1.ListZonesRequest(project=project)
+            zones = zones_client.list(request=zones_request)
+            
+            for zone_obj in zones:
+                request = compute_v1.ListInstancesRequest(
+                    project=project,
+                    zone=zone_obj.name
+                )
+                vms = client.list(request=request)
+                for vm in vms:
+                    if not status or vm.status == status:
+                        vm.zone = zone_obj.name  # Attach zone info
+                        vm_list.append(vm)
         
-        lines.append(f"| {name} | {status_emoji} {vm_status} | {vm_zone} | {machine_type} |")
+        if not vm_list:
+            return "📝 未找到 VM"
+        
+        lines = ["🖥️ *VM 列表*\n"]
+        lines.append("| 名称 | 状态 | 区域 | 机器类型 |")
+        lines.append("|:---|:---|:---|:---|")
+        
+        for vm in vm_list[:20]:  # Limit to 20 VMs
+            name = vm.name or "N/A"
+            vm_status = vm.status or "N/A"
+            vm_zone = getattr(vm, 'zone', 'N/A').split('/')[-1] if '/' in getattr(vm, 'zone', '') else getattr(vm, 'zone', 'N/A')
+            machine_type = vm.machine_type.split('/')[-1] if '/' in (vm.machine_type or '') else (vm.machine_type or "N/A")
+            
+            status_emoji = {"RUNNING": "🟢", "TERMINATED": "🔴", "STOPPED": "🟡"}.get(vm_status, "⚪")
+            
+            lines.append(f"| {name} | {status_emoji} {vm_status} | {vm_zone} | {machine_type} |")
+        
+        if len(vm_list) > 20:
+            lines.append(f"\n_还有 {len(vm_list) - 20} 台 VM..._")
+        
+        return "\n".join(lines)
     
-    if len(vm_list) > 20:
-        lines.append(f"\n_还有 {len(vm_list) - 20} 台 VM..._")
-    
-    return "\n".join(lines)
+    except Exception as e:
+        return f"❌ 查询失败: {str(e)}"
 
 
 def get_vm_status(project: str, target: Optional[str] = None) -> str:
     """Get VM status, optionally for a specific VM."""
-    args = ["compute", "instances", "list"]
+    client = compute_v1.InstancesClient()
     
-    if target:
-        args.extend(["--filter", f"name:{target}"])
-    
-    success, result = run_gcloud_command(args, project)
-    
-    if not success:
-        return f"❌ 查询失败: {result}"
-    
-    vm_list = result if isinstance(result, list) else []
-    
-    if not vm_list:
-        return "📝 未找到 VM"
-    
-    if target and len(vm_list) == 1:
-        vm = vm_list[0]
-        name = vm.get("name", "N/A")
-        status = vm.get("status", "N/A")
-        zone = vm.get("zone", "").split("/")[-1] if "/" in vm.get("zone", "") else vm.get("zone", "N/A")
-        machine_type = vm.get("machineType", "").split("/")[-1] if "/" in vm.get("machineType", "") else vm.get("machineType", "N/A")
+    try:
+        vm_list = []
+        zones_client = compute_v1.ZonesClient()
+        zones_request = compute_v1.ListZonesRequest(project=project)
+        zones = zones_client.list(request=zones_request)
         
-        status_emoji = {"RUNNING": "🟢", "TERMINATED": "🔴", "STOPPED": "🟡"}.get(status, "⚪")
+        for zone_obj in zones:
+            request = compute_v1.ListInstancesRequest(
+                project=project,
+                zone=zone_obj.name
+            )
+            vms = client.list(request=request)
+            for vm in vms:
+                if not target or target in vm.name:
+                    vm.zone = zone_obj.name
+                    vm_list.append(vm)
         
-        return (
-            f"🖥️ *VM 状态*\n\n"
-            f"*名称*: `{name}`\n"
-            f"*状态*: {status_emoji} {status}\n"
-            f"*区域*: `{zone}`\n"
-            f"*机器类型*: `{machine_type}`"
-        )
-    else:
-        # Summary of all VMs
-        running = len([vm for vm in vm_list if vm.get("status") == "RUNNING"])
-        terminated = len([vm for vm in vm_list if vm.get("status") == "TERMINATED"])
-        stopped = len([vm for vm in vm_list if vm.get("status") == "STOPPED"])
-        other = len(vm_list) - running - terminated - stopped
+        if not vm_list:
+            return "📝 未找到 VM"
         
-        return (
-            f"📊 *VM 状态概览*\n\n"
-            f"总计: *{len(vm_list)}* 台 VM\n"
-            f"🟢 运行中: {running} 台\n"
-            f"🔴 已终止: {terminated} 台\n"
-            f"🟡 已停止: {stopped} 台\n"
-            f"⚪ 其他: {other} 台"
-        )
+        if target and len(vm_list) == 1:
+            vm = vm_list[0]
+            name = vm.name or "N/A"
+            status = vm.status or "N/A"
+            zone = getattr(vm, 'zone', 'N/A').split('/')[-1] if '/' in getattr(vm, 'zone', '') else getattr(vm, 'zone', 'N/A')
+            machine_type = vm.machine_type.split('/')[-1] if '/' in (vm.machine_type or '') else (vm.machine_type or "N/A")
+            
+            status_emoji = {"RUNNING": "🟢", "TERMINATED": "🔴", "STOPPED": "🟡"}.get(status, "⚪")
+            
+            return (
+                f"🖥️ *VM 状态*\n\n"
+                f"*名称*: `{name}`\n"
+                f"*状态*: {status_emoji} {status}\n"
+                f"*区域*: `{zone}`\n"
+                f"*机器类型*: `{machine_type}`"
+            )
+        else:
+            # Summary of all VMs
+            running = len([vm for vm in vm_list if vm.status == "RUNNING"])
+            terminated = len([vm for vm in vm_list if vm.status == "TERMINATED"])
+            stopped = len([vm for vm in vm_list if vm.status == "STOPPED"])
+            other = len(vm_list) - running - terminated - stopped
+            
+            return (
+                f"📊 *VM 状态概览*\n\n"
+                f"总计: *{len(vm_list)}* 台 VM\n"
+                f"🟢 运行中: {running} 台\n"
+                f"🔴 已终止: {terminated} 台\n"
+                f"🟡 已停止: {stopped} 台\n"
+                f"⚪ 其他: {other} 台"
+            )
+    
+    except Exception as e:
+        return f"❌ 查询失败: {str(e)}"
 
 
 def get_zone_count(project: str) -> str:
     """Get the count of available zones."""
-    args = ["compute", "zones", "list"]
+    client = compute_v1.ZonesClient()
     
-    success, result = run_gcloud_command(args, project)
+    try:
+        request = compute_v1.ListZonesRequest(project=project)
+        zones = client.list(request=request)
+        count = sum(1 for _ in zones)
+        
+        return f"🌍 *可用区数量*\n\n项目共有 *{count}* 个可用区"
     
-    if not success:
-        return f"❌ 查询失败: {result}"
-    
-    zone_list = result if isinstance(result, list) else []
-    count = len(zone_list)
-    
-    return f"🌍 *可用区数量*\n\n项目共有 *{count}* 个可用区"
+    except Exception as e:
+        return f"❌ 查询失败: {str(e)}"
 
 
 def get_resource_summary(project: str) -> str:
     """Get a summary of all resources."""
-    # Get VM count
-    success, vm_result = run_gcloud_command(
-        ["compute", "instances", "list"],
-        project
-    )
-    vm_count = len(vm_result) if success and isinstance(vm_result, list) else 0
+    try:
+        # Get VM count
+        instances_client = compute_v1.InstancesClient()
+        zones_client = compute_v1.ZonesClient()
+        
+        zones_request = compute_v1.ListZonesRequest(project=project)
+        zones = zones_client.list(request=zones_request)
+        
+        vm_count = 0
+        zone_count = 0
+        for zone_obj in zones:
+            zone_count += 1
+            request = compute_v1.ListInstancesRequest(
+                project=project,
+                zone=zone_obj.name
+            )
+            vms = instances_client.list(request=request)
+            vm_count += sum(1 for _ in vms)
+        
+        return (
+            f"📋 *资源概览*\n\n"
+            f"🖥️ VM 数量: *{vm_count}* 台\n"
+            f"🌍 可用区: *{zone_count}* 个\n\n"
+            f"使用 */status* 查看详细巡检报告"
+        )
     
-    # Get zone count
-    success, zone_result = run_gcloud_command(
-        ["compute", "zones", "list"],
-        project
-    )
-    zone_count = len(zone_result) if success and isinstance(zone_result, list) else 0
-    
-    return (
-        f"📋 *资源概览*\n\n"
-        f"🖥️ VM 数量: *{vm_count}* 台\n"
-        f"🌍 可用区: *{zone_count}* 个\n\n"
-        f"使用 */status* 查看详细巡检报告"
-    )
+    except Exception as e:
+        return f"❌ 查询失败: {str(e)}"
 
 
 def execute_query(intent: QueryIntent, project: str) -> str:
