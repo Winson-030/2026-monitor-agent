@@ -8,33 +8,71 @@
 </p>
 
 <p align="center">
-  <b>🌐 选择语言 / Select Language / 言語を選択</b>
+  <b>🌐 Select Language / 选择语言 / 言語を選択</b>
 </p>
 
 <p align="center">
-  <a href="README_cn.md">🇨🇳 中文</a> |
-  <a href="README_en.md">🇺🇸 English</a> |
-  <a href="README_jp.md">🇯🇵 日本語</a>
+  <a href="README.md">🇺🇸 English (Full Docs)</a> |
+  <a href="README_cn.md">🇨🇳 中文 (简介)</a> |
+  <a href="README_jp.md">🇯🇵 日本語 (概要)</a>
 </p>
 
 ---
 
-## 📋 项目介绍 / Project Overview / プロジェクト概要
+## 📋 Table of Contents
 
-**GCP Monitoring Agent** 是一个智能的 GCP 资源巡检系统，部署于 Cloud Run，能够定时采集 GCE 实例指标，通过 Gemini 2.5 Flash AI 进行分析，并通过 Telegram Bot 推送告警。
-
-> **GCP Monitoring Agent** is an intelligent GCP resource inspection system deployed on Cloud Run. It periodically collects GCE instance metrics, analyzes them using Gemini 2.5 Flash AI, and sends alerts via Telegram Bot.
-
-> **GCP Monitoring Agent** は、Cloud Run 上にデプロイされるインテリジェントな GCP リソース監査システムです。定期的に GCE インスタンスのメトリクスを収集し、Gemini 2.5 Flash AI を用いて分析を行い、Telegram Bot 経由でアラートを通知します。
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Deployment](#deployment)
+- [Configuration](#configuration)
+- [API Endpoints](#api-endpoints)
+- [Telegram Bot Commands](#telegram-bot-commands)
+- [Project Structure](#project-structure)
+- [Cost Estimate](#cost-estimate)
+- [MVP Scope](#mvp-scope)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🏗️ 架构图 / Architecture / アーキテクチャ
+## 📋 Overview
+
+**GCP Monitoring Agent** is an intelligent GCP resource inspection system deployed on Cloud Run. It periodically collects GCE instance metrics, analyzes them using Gemini 2.5 Flash AI, and sends alerts via Telegram Bot.
+
+### What This MVP Delivers
+
+This MVP focuses on getting a working system deployed and running:
+
+| Component | Purpose |
+|-----------|---------|
+| **MetricsFetcher** | Deterministic data collection from GCP APIs (zero token cost) |
+| **Inspector** | LLM analysis of metrics → status classification |
+| **GCS State Manager** | Simple file-based persistence |
+| **Telegram Bot** | Interactive alerts and commands |
+
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🤖 **AI-Powered Analysis** | Smart metric analysis with Gemini 2.5 Flash |
+| 📊 **Automatic Metrics Collection** | Deterministic data collection via GCP Monitoring API |
+| 💬 **Telegram Integration** | Bot interaction with `/status`, `/inspect` commands |
+| ☁️ **Cloud Run Deployment** | Serverless architecture with pay-per-use pricing |
+| 📁 **State Persistence** | Inspection reports stored in GCS |
+| 🔧 **Flexible Configuration** | YAML config + environment variables |
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TB
     subgraph Scheduler["Cloud Scheduler"]
-        CS["定时触发 / Scheduled / 定時実行"]
+        CS["Scheduled Trigger<br/>Every 5 minutes"]
     end
 
     subgraph CloudRun["Cloud Run Service"]
@@ -53,7 +91,7 @@ flowchart TB
         GCS["GCS Bucket<br/>latest_report.json"]
     end
 
-    subgraph Notification["Notification / 通知"]
+    subgraph Notification["Notification"]
         TG["Telegram Bot"]
     end
 
@@ -71,51 +109,229 @@ flowchart TB
     StateMgr -->|Read Report| GCS
 ```
 
+### Component Reference
+
+| Component | Description | Technologies |
+|-----------|-------------|--------------|
+| **MetricsFetcher** | Collects CPU/disk/status metrics from GCE instances | `google-cloud-monitoring`, `google-cloud-compute` |
+| **Inspector** | Gemini AI analyzes metrics and determines status | `vertexai`, Gemini 2.5 Flash |
+| **GCSStateManager** | Storage and retrieval of inspection reports | `google-cloud-storage` |
+| **TelegramHandler** | Bot message delivery and interaction handling | Telegram Bot API |
+| **Orchestrator** | Inspection workflow orchestration | Python class |
+
 ---
 
-## 🚀 快速开始 / Quick Start / クイックスタート
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.13+
+- GCP project with APIs enabled
+- Telegram Bot Token
+- GCS Bucket
+
+### Local Development
 
 ```bash
-# Clone / 克隆 / クローン
+# 1. Clone the repository
 git clone https://github.com/Winson-030/2026-monitor-agent.git
 cd gcp-monitoring-agent
 
-# Setup / 配置 / セットアップ
-pip install -r requirements.txt
-cp .env.example .env
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or: venv\Scripts\activate  # Windows
 
-# Run / 运行 / 実行
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# 5. Run
 python main.py
 ```
 
 ---
 
-## 📚 文档 / Documentation / ドキュメント
+## 📦 Deployment
 
-| 文档 / Document / ドキュメント | 中文 🇨🇳 | English 🇺🇸 | 日本語 🇯🇵 |
-|-------------------------------|---------|------------|----------|
-| **README (本文档)** | [中文](README_cn.md) | [English](README_en.md) | [日本語](README_jp.md) |
-| **部署指南** | [中文](DEPLOYMENT_cn.md) | [English](DEPLOYMENT_en.md) | [日本語](DEPLOYMENT_jp.md) |
-| **配置指南** | [中文](CONFIGURATION_cn.md) | [English](CONFIGURATION_en.md) | [日本語](CONFIGURATION_jp.md) |
+### Enable Required APIs
+
+```bash
+gcloud services enable run.googleapis.com
+gcloud services enable monitoring.googleapis.com
+gcloud services enable compute.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable aiplatform.googleapis.com
+gcloud services enable cloudbuild.googleapis.com
+```
+
+### Build and Deploy
+
+```bash
+# Build image
+gcloud builds submit --tag gcr.io/$PROJECT_ID/gcp-monitor
+
+# Deploy to Cloud Run
+gcloud run deploy gcp-monitor \
+  --image gcr.io/$PROJECT_ID/gcp-monitor \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars="TELEGRAM_BOT_TOKEN=your-bot-token" \
+  --set-env-vars="TELEGRAM_CHAT_ID=your-chat-id"
+```
+
+See [DEPLOYMENT_en.md](DEPLOYMENT_en.md) for detailed deployment steps.
 
 ---
 
-## 💬 核心特性 / Key Features / 主な機能
+## ⚙️ Configuration
 
-| 特性 / Feature / 機能 | 说明 / Description / 説明 |
-|---------------------|--------------------------|
-| 🤖 **AI 驱动分析** | 使用 Gemini 2.5 Flash 智能分析监控指标 |
-| 📊 **自动指标采集** | 基于 GCP Monitoring API 的确定性数据采集 |
-| 💬 **Telegram 集成** | Bot 交互支持 (`/status`, `/inspect` 命令) |
-| ☁️ **Cloud Run 部署** | 无服务器架构，按需付费 |
-| 📁 **状态持久化** | GCS 存储巡检报告 |
-| 🔧 **灵活配置** | YAML 配置 + 环境变量支持 |
+### config.yaml
+
+```yaml
+gcp:
+  project_id: "your-project-id"
+  region: "us-central1"
+  default_zone: "us-central1-a"
+
+thresholds:
+  cpu_critical: 90
+  cpu_warning: 80
+  disk_critical: 90
+  disk_warning: 80
+
+gcs_bucket: "your-bucket-name"
+
+budget:
+  daily_max_usd: 3.0
+
+inspection:
+  zones:
+    - "us-central1-a"
+    - "us-central1-b"
+```
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | ✅ | Telegram Bot Token (from @BotFather) |
+| `TELEGRAM_CHAT_ID` | ✅ | Telegram Chat ID |
+| `GOOGLE_CLOUD_PROJECT` | - | GCP Project ID |
+| `GOOGLE_APPLICATION_CREDENTIALS` | - | Service account key path (local dev) |
+
+See [CONFIGURATION_en.md](CONFIGURATION_en.md) for detailed configuration.
 
 ---
 
-## 📄 许可证 / License / ライセンス
+## 🔌 API Endpoints
 
-[MIT License](LICENSE)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/run-inspection` | POST | Run inspection job |
+| `/telegram-webhook` | POST | Telegram Webhook |
+| `/healthz` | GET | Health check |
+
+---
+
+## 💬 Telegram Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/status` | View latest inspection report |
+| `/inspect <instance>` | View detailed analysis for specific instance |
+| Any text | Smart Q&A based on latest report |
+
+---
+
+## 📁 Project Structure
+
+```
+gcp-monitoring-agent/
+├── agents/                 # AI analysis modules
+│   ├── __init__.py
+│   ├── inspector.py       # Gemini analyzer
+│   └── prompts.py         # System prompts
+├── fetcher/               # Data collection modules
+│   ├── __init__.py
+│   └── metrics.py         # GCP metrics fetching
+├── notify/                # Notification modules
+│   ├── __init__.py
+│   └── telegram.py        # Telegram Bot
+├── store/                 # Storage modules
+│   ├── __init__.py
+│   └── state_manager.py   # GCS state management
+├── main.py                # Flask application entry
+├── orchestrator.py        # Inspection orchestration
+├── config.yaml            # Configuration file
+├── requirements.txt       # Python dependencies
+├── Dockerfile             # Container image
+└── .env.example           # Environment variables example
+```
+
+---
+
+## 💰 Cost Estimate
+
+| Item | Monthly Cost |
+|------|--------------|
+| Cloud Run (1 vCPU, 512MB, 200 requests/day) | ~$5-8 |
+| Cloud Scheduler (3 jobs) | ~$0.50 |
+| GCS (report storage) | $0 |
+| Gemini Flash API (~500 targets/day, ~50 tokens/analysis) | ~$0.30 |
+| **Total** | **~$6-9/month** |
+
+Cheaper than a VM, 10x less ops than self-hosted Prometheus.
+
+---
+
+## 📋 MVP Scope
+
+### Keep vs Phase 2
+
+| Component | MVP Status | Reason |
+|-----------|------------|----------|
+| `fetcher/metrics.py` | ✅ **Keep** | Core data collection - no data without it |
+| `agents/inspector.py` | ✅ **Keep** | LLM analysis core |
+| `orchestrator.py` | ✅ **Keep** | Orchestrates fetch → analyze → store |
+| `store/state_manager.py` | ✅ **Keep** | Simple GCS file storage |
+| `notify/telegram.py` | ✅ **Keep** | Only interaction interface |
+| `agents/verifier.py` | 🔄 **Phase 2** | Double cost - trust single analysis for MVP |
+| Self-monitoring metrics | 🔄 **Phase 2** | Cloud Run has built-in logs |
+| Circuit Breaker | 🔄 **Phase 2** | No retries = no breaker needed |
+| Per-target files | 🔄 **Phase 2** | Single file sufficient for 50 targets |
+| Natural language Q&A | 🔄 **Phase 2** | MVP focuses on `/status` + `/inspect` |
+
+---
+
+## 🤝 Contributing
+
+We welcome all forms of contributions!
+
+1. **Fork** this repository
+2. Create your **Feature Branch** (`git checkout -b feature/AmazingFeature`)
+3. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** to the branch (`git push origin feature/AmazingFeature`)
+5. Open a **Pull Request**
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## 📚 Documentation
+
+- [中文文档 (Chinese)](README_cn.md) - Quick reference
+- [日本語ドキュメント (Japanese)](README_jp.md) - Quick reference
+- [Deployment Guide](DEPLOYMENT_en.md)
+- [Configuration Guide](CONFIGURATION_en.md)
 
 ---
 
