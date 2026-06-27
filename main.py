@@ -80,6 +80,6 @@ def telegram_webhook():
 def root():
     return {"status": "ok", "message": "GCP Monitoring Agent is running"}
 
-@app.route("/healthz")
-def healthz():
+@app.route("/health")
+def health():
     return {"status": "ok"}
