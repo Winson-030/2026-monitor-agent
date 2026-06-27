@@ -108,6 +108,36 @@ python main.py
 
 ---
 
+## 🌐 Web Chat Interface (New!)
+
+The agent provides a **web-based chat interface** powered by [Google ADK](https://google.github.io/adk-docs/).
+
+### Quick Start
+
+```bash
+# Install ADK dependency
+pip install -r requirements-adk.txt
+
+# Start the web UI (run from project root)
+adk web --port 8000
+
+# → Open http://localhost:8000
+# → Select "gcp_monitor_agent" from the dropdown
+# → Start chatting!
+```
+
+### Example Questions
+
+```text
+- "现在有几台 VM 在运行？"
+- "列出 us-central1-a 的所有实例"
+- "查看 vm-1 的 CPU 使用率"
+- "最新的巡检报告有什么异常吗？"
+- "执行 gcloud compute instances list"
+```
+
+---
+
 ## 💰 Cost Estimate
 
 | Item | Monthly Cost |
@@ -125,6 +155,7 @@ python main.py
 ```
 gcp-monitoring-agent/
 ├── agents/                 # AI analysis modules
+│   ├── agent.py           # ADK agent definition + tools (NEW)
 │   ├── inspector.py       # Gemini analyzer
 │   └── prompts.py         # System prompts
 ├── fetcher/               # Data collection modules
@@ -133,10 +164,12 @@ gcp-monitoring-agent/
 │   └── telegram.py        # Telegram Bot
 ├── store/                 # Storage modules
 │   └── state_manager.py   # GCS state management
-├── main.py                # Flask application entry
+├── main.py                # Flask application entry (Telegram + Scheduler)
+├── main_adk.py            # ADK FastAPI entry point (NEW)
 ├── orchestrator.py        # Inspection orchestration
 ├── config.yaml            # Configuration file
 ├── requirements.txt       # Python dependencies
+├── requirements-adk.txt   # ADK dependencies (NEW)
 └── Dockerfile             # Container image
 ```
 
