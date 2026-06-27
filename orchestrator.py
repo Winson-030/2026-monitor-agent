@@ -16,7 +16,10 @@ class InspectionLoop:
 
         results = []
         for r in raw:
-            analysis = self.inspector.analyze(r["id"], r)
+            try:
+                analysis = self.inspector.analyze(r["id"], r)
+            except Exception as e:
+                analysis = {"status": "error", "reason": str(e)}
             results.append({**r, "analysis": analysis})
 
         report = {

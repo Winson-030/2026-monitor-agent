@@ -41,29 +41,39 @@ from notify.telegram import format_report, format_alert
 
 @app.route("/run-inspection", methods=["POST"])
 def run_inspection():
-    config = get_config()
-    loop = get_loop()
-    tg = get_tg()
-    zone = request.json.get("zone", config["gcp"]["default_zone"])
-    report = loop.run(zone=zone)
+    try:
+        config = get_config()
+        loop = get_loop()
+        tg = get_tg()
+        zone = request.json.get("zone", config["gcp"]["default_zone"]) if request.is_json else config["gcp"]["default_zone"]
+        report = loop.run(zone=zone)
 
-    findings = [
-        r for r in report["results"]
-        if r.get("analysis", {}).get("status") in ("critical", "warning")
-    ]
-    if findings:
-        tg.send_alert(format_alert(findings))
+        findings = [
+            r for r in report["results"]
+            if r.get("analysis", {}).get("status") in ("critical", "warning")
+        ]
+        if findings:
+            tg.send_alert(format_alert(findings))
 
-    return {"status": "ok", "targets": len(report["results"])}
+        return {"status": "ok", "targets": len(report["results"])}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
 
 
 @app.route("/telegram-webhook", methods=["POST"])
 def telegram_webhook():
-    data = request.get_json()
-    tg = get_tg()
-    loop = get_loop()
-    tg.handle_webhook(data, loop)
-    return {"ok": True}
+    try:
+        data = request.get_json()
+        tg = get_tg()
+        loop = get_loop()
+        tg.handle_webhook(data, loop)
+        return {"ok": True}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": str(e)}
 
 
 @app.route("/")

@@ -50,36 +50,58 @@ def answer_question(question: str, report: dict | None) -> str:
 
 class TelegramHandler:
     def __init__(self, token: str, chat_id: str):
+        if not token:
+            raise ValueError("TELEGRAM_BOT_TOKEN is required")
         self.base = f"https://api.telegram.org/bot{token}"
         self.chat_id = chat_id
 
     def send_message(self, chat_id: str, text: str):
-        requests.post(f"{self.base}/sendMessage", json={"chat_id": chat_id, "text": text})
+        try:
+            requests.post(
+                f"{self.base}/sendMessage",
+                json={"chat_id": chat_id, "text": text},
+                timeout=10
+            )
+        except Exception as e:
+            print(f"Telegram send error: {e}")
 
     def send_alert(self, message: str):
         self.send_message(self.chat_id, message)
 
     def handle_webhook(self, data: dict, loop):
-        message = data.get("message", {})
-        chat_id = message.get("chat", {}).get("id")
-        text = message.get("text", "").strip()
+        try:
+            message = data.get("message", {})
+            chat_id = message.get("chat", {}).get("id")
+            text = message.get("text", "").strip()
 
-        if not text or not chat_id:
-            return
+            if not text or not chat_id:
+                return
 
-        if text == "/status":
-            report = loop.get_latest_report()
-            self.send_message(chat_id, format_report(report))
+            if text == "/status":
+                report = loop.get_latest_report()
+                self.send_message(chat_id, format_report(report))
 
-        elif text.startswith("/inspect "):
-            target = text.replace("/inspect ", "")
-            metrics = loop.fetcher.fetch_for_target(target)
-            if metrics:
-                analysis = loop.inspector.analyze(target, metrics)
-                self.send_message(chat_id, format_analysis(analysis))
+            elif text.startswith("/inspect "):
+                target = text.replace("/inspect ", "")
+                metrics = loop.fetcher.fetch_for_target(target)
+                if metrics:
+                    analysis = loop.inspector.analyze(target, metrics)
+                    self.send_message(chat_id, format_analysis(analysis))
+                else:
+                    self.send_message(chat_id, f"未找到目标: {target}")
+
+            elif text in ("/start", "/help"):
+                help_text = (
+                    "🤖 GCP Monitoring Agent\n\n"
+                    "命令:\n"
+                    "/status - 查看最新巡检报告\n"
+                    "/inspect <vm-name> - 即时查询单台 VM\n"
+                    "/help - 显示帮助"
+                )
+                self.send_message(chat_id, help_text)
+
             else:
-                self.send_message(chat_id, f"未找到目标: {target}")
-
-        else:
-            report = loop.get_latest_report()
-            self.send_message(chat_id, answer_question(text, report))
+                report = loop.get_latest_report()
+                self.send_message(chat_id, answer_question(text, report))
+        except Exception as e:
+            print(f"Webhook error: {e}")
