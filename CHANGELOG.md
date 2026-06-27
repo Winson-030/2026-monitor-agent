@@ -31,3 +31,24 @@
 - Intent recognition with structured JSON output
 - MarkdownV2 formatted responses with tables and emoji
 
+
+## [v13] - 2026-06-27
+
+### Fixes
+- **ADK Import Error**: Remove ADK import from `agents/__init__.py` to prevent startup error
+  - Flask app doesn't require ADK dependencies
+  - ADK agent available separately via `agents/agent.py`
+
+## [v12] - 2026-06-27
+
+### Features
+- **ADK Web Chat Interface**: Consolidated ADK agent into `agents/agent.py`
+  - 5 monitoring tools: list_vm_instances, get_vm_metrics, get_latest_report, run_gcloud_query, query_report
+  - FastAPI entry point: `main_adk.py`
+  - Web UI via `adk web` command
+
+### Changes
+- Restructured project to support both Flask (Telegram) and ADK (Web Chat)
+- Removed separate `agents/adk_agent/` directory
+- Updated documentation
+
