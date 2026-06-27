@@ -18,3 +18,12 @@ budget:
 inspection:
   zones:
     - "us-central1-a"
+
+# ADK Web Chat Interface
+adk:
+  enabled: true
+  session_uri: "sqlite+aiosqlite:///./sessions.db"
+  web_ui: true
+  allowed_origins:
+    - "http://localhost:8000"
+    - "http://localhost:4200"
