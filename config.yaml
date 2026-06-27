@@ -1,0 +1,23 @@
+gcp:
+  project_id: "your-gcp-project-id"
+  region: "us-central1"
+  default_zone: "us-central1-a"
+
+thresholds:
+  cpu_critical: 90
+  cpu_warning: 80
+  disk_critical: 90
+  disk_warning: 80
+
+telegram:
+  bot_token: "YOUR_BOT_TOKEN"
+  chat_id: "YOUR_CHAT_ID"
+
+gcs_bucket: "your-inspection-state-bucket"
+
+budget:
+  daily_max_usd: 3.0
+
+inspection:
+  zones:
+    - "us-central1-a"
