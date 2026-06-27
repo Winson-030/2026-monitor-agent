@@ -87,16 +87,32 @@ async def run_inspection(request: Request):
 
 @app.post("/telegram-webhook")
 async def telegram_webhook(request: Request):
-    """Telegram Bot webhook：接收用户消息并回复"""
+    """Telegram Bot webhook — routes messages through ADK agent (unified runtime)."""
     try:
         body = await request.json()
+        message = body.get("message", {})
+        chat_id = str(message.get("chat", {}).get("id", ""))
+        text = message.get("text", "").strip()
+
+        if not text or not chat_id:
+            return {"ok": True}
+
+        # Route through ADK agent
+        from agents.adk_runner import process_message
+        session_id = f"tg-{chat_id}"
+        response = await process_message(
+            user_id="telegram",
+            session_id=session_id,
+            text=text,
+        )
+
+        # Send response back via Telegram
         tg = get_telegram_handler(
             token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
             chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
         )
-        config = get_config()
-        loop = get_inspection_loop(config["gcp"]["project_id"], config)
-        tg.handle_webhook(body, loop)
+        tg.send_message(chat_id, response, parse_mode=None)
+
         return {"ok": True}
     except Exception as e:
         traceback.print_exc()

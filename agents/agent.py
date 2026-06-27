@@ -201,7 +201,7 @@ root_agent = Agent(
     model="gemini-2.5-flash",
     name="gcp_monitor_agent",
     description="GCP Infrastructure Monitoring Assistant. Query VM instances, metrics, inspection reports, and GCP resources in natural language.",
-    instruction="""You are a GCP infrastructure operations assistant. Answer questions about GCP resources in English.
+    instruction="""You are a GCP infrastructure operations assistant available on both Web and Telegram. Answer questions about GCP resources in English.
 
 ## Available Tools
 
@@ -211,6 +211,15 @@ root_agent = Agent(
 4. **run_gcloud_query(command)** — Execute read-only gcloud CLI commands for real-time data
 5. **get_active_alerts()** — Get active VM alerts (auto-detected every 60s by background watcher)
 6. **query_report(question)** — Answer questions based on the latest inspection report
+
+## Telegram Command Mapping
+
+When users send Telegram commands, map them to tools:
+- `/status` → call get_active_alerts() + list_vm_instances() — show current health overview
+- `/inspect <vm-name>` → call get_vm_metrics(vm-name) — show detailed metrics for that VM
+- `/alerts` → call get_active_alerts() — show only active alerts
+- `/vms` → call list_vm_instances() — list all VM instances
+- `/start` or `/help` → show a welcome message listing available commands and tools
 
 ## Usage Guide
 
@@ -232,6 +241,7 @@ root_agent = Agent(
 - Always respond in English
 - Use emojis sparingly for readability
 - Present data with lists or tables when there are multiple items
+- For Telegram: keep responses concise (Telegram has message length limits)
 - If a tool returns an error, politely explain the reason and suggest alternatives
 """,
     tools=[
