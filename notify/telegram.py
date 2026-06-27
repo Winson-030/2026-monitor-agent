@@ -2,6 +2,7 @@ import json
 import requests
 
 from agents.inspector import chat as llm_chat
+from query import parse_intent, execute_query
 
 
 def escape_markdown(text: str) -> str:
@@ -189,10 +190,24 @@ class TelegramHandler:
 
             else:
                 print(f"[WEBHOOK] Chat message: {text}")
-                report = loop.get_latest_report()
-                response = llm_chat(text, report)
-                print(f"[WEBHOOK] Sending response to {chat_id}")
-                # 直接使用 LLM 返回的 Markdown，如果失败会回退到纯文本
-                self.send_message(chat_id, response)
+                
+                # 首先尝试意图识别 + gcloud 查询
+                from config import config
+                project = config.gcp.project_id
+                
+                intent = parse_intent(text)
+                print(f"[WEBHOOK] Parsed intent: {intent.query_type}")
+                
+                # 如果是可执行的查询类型，使用 gcloud 获取实时数据
+                if intent.query_type in ["vm_count", "vm_list", "vm_status", "zone_count", "resource_summary"]:
+                    response = execute_query(intent, project)
+                    print(f"[WEBHOOK] Executed query, sending response to {chat_id}")
+                    self.send_message(chat_id, response)
+                else:
+                    # 否则使用 LLM 聊天模式
+                    report = loop.get_latest_report()
+                    response = llm_chat(text, report)
+                    print(f"[WEBHOOK] Sending LLM response to {chat_id}")
+                    self.send_message(chat_id, response)
         except Exception as e:
             print(f"Webhook error: {e}")
