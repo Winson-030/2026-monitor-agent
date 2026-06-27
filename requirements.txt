@@ -1,5 +1,5 @@
-flask
-gunicorn
+fastapi>=0.115.0
+uvicorn>=0.30.0
 google-cloud-monitoring
 google-cloud-compute
 google-cloud-storage

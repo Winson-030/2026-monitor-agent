@@ -1,56 +1,73 @@
+"""
+GCP Monitoring Agent — FastAPI + ADK Web Chat Interface.
+
+Combines:
+- ADK web chat UI at /
+- Existing inspection and Telegram endpoints at /run-inspection, /telegram-webhook
+
+Deployed on Cloud Run:
+    https://gcp-monitor-agent-102942669966.us-central1.run.app
+"""
+
 import os
+import json
 import yaml
 import traceback
-from flask import Flask, request
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from google.adk.cli.fast_api import get_fast_api_app
 
-app = Flask(__name__)
+# ── ADK Setup ─────────────────────────────────────────────
+AGENTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents")
+SESSION_URI = os.getenv("ADK_SESSION_URI", "sqlite+aiosqlite:///./sessions.db")
+ALLOWED_ORIGINS = os.getenv("ADK_ALLOWED_ORIGINS", "*").split(",")
 
-# Lazy initialization to handle startup errors gracefully
-_config = None
-_loop = None
-_tg = None
+app: FastAPI = get_fast_api_app(
+    agents_dir=AGENTS_DIR,
+    session_service_uri=SESSION_URI,
+    allow_origins=ALLOWED_ORIGINS,
+    web=True,
+)
 
-def get_config():
-    global _config
-    if _config is None:
+# ── Lazy Initialization ───────────────────────────────────
+_config_cache = None
+
+
+def get_config() -> dict:
+    global _config_cache
+    if _config_cache is None:
         config_path = os.getenv("CONFIG_PATH", "config.yaml")
         with open(config_path) as f:
-            _config = yaml.safe_load(f)
-    return _config
-
-def get_loop():
-    global _loop
-    if _loop is None:
-        from orchestrator import InspectionLoop
-        config = get_config()
-        _loop = InspectionLoop(config["gcp"]["project_id"], config)
-    return _loop
-
-def get_tg():
-    global _tg
-    if _tg is None:
-        from notify.telegram import TelegramHandler
-        _tg = TelegramHandler(
-            token=os.getenv("TELEGRAM_BOT_TOKEN"),
-            chat_id=os.getenv("TELEGRAM_CHAT_ID"),
-        )
-    return _tg
+            _config_cache = yaml.safe_load(f)
+    return _config_cache
 
 
-from notify.telegram import format_report, format_alert
+def get_telegram_handler(token: str, chat_id: str):
+    from notify.telegram import TelegramHandler
+    return TelegramHandler(token=token, chat_id=chat_id)
 
-@app.route("/run-inspection", methods=["POST"])
-def run_inspection():
+
+def get_inspection_loop(project_id: str, config: dict, mode: str = "standard"):
+    from orchestrator import InspectionLoop
+    return InspectionLoop(project_id, config, mode=mode)
+
+
+# ── Existing Endpoints (converted from Flask) ─────────────
+
+@app.post("/run-inspection")
+async def run_inspection(request: Request):
+    """Cloud Scheduler 定时触发：采集指标 → AI 分析 → 发送告警"""
     try:
         config = get_config()
-        data = request.get_json(silent=True) or {}
-        zone = data.get("zone", config["gcp"]["default_zone"])
-        mode = data.get("mode", "standard")  # standard or deep
+        body = await request.json() if request.headers.get("content-type") == "application/json" else {}
+        zone = body.get("zone", config["gcp"]["default_zone"])
+        mode = body.get("mode", "standard")
 
-        # Create loop with the specified mode
-        from orchestrator import InspectionLoop
-        loop = InspectionLoop(config["gcp"]["project_id"], config, mode=mode)
-        tg = get_tg()
+        loop = get_inspection_loop(config["gcp"]["project_id"], config, mode=mode)
+        tg = get_telegram_handler(
+            token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
+            chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
+        )
 
         report = loop.run(zone=zone)
 
@@ -59,33 +76,38 @@ def run_inspection():
             if r.get("analysis", {}).get("status") in ("critical", "warning")
         ]
         if findings:
+            from notify.telegram import format_alert
             tg.send_alert(format_alert(findings))
 
         return {"status": "ok", "mode": mode, "targets": len(report["results"])}
     except Exception as e:
-        import traceback
         traceback.print_exc()
-        return {"status": "error", "message": str(e)}
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 
-@app.route("/telegram-webhook", methods=["POST"])
-def telegram_webhook():
+@app.post("/telegram-webhook")
+async def telegram_webhook(request: Request):
+    """Telegram Bot webhook：接收用户消息并回复"""
     try:
-        data = request.get_json()
-        tg = get_tg()
-        loop = get_loop()
-        tg.handle_webhook(data, loop)
+        body = await request.json()
+        tg = get_telegram_handler(
+            token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
+            chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
+        )
+        config = get_config()
+        loop = get_inspection_loop(config["gcp"]["project_id"], config)
+        tg.handle_webhook(body, loop)
         return {"ok": True}
     except Exception as e:
-        import traceback
         traceback.print_exc()
-        return {"ok": False, "error": str(e)}
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
 
-@app.route("/")
-def root():
-    return {"status": "ok", "message": "GCP Monitoring Agent is running"}
-
-@app.route("/health")
-def health():
-    return {"status": "ok"}
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok",
+        "service": "gcp-monitor-agent",
+        "mode": "adk-web",
+        "agent": "gcp_monitor_agent",
+    }
