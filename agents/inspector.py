@@ -30,6 +30,7 @@ class Inspector:
 
 def chat(question: str, report: dict | None) -> str:
     """Natural language chat powered by Gemini 3.5 Flash."""
+    print(f"[CHAT] Question: {question}")
     # Build context from latest report
     if report and report.get("results"):
         lines = [f"时间: {report.get('timestamp', '?')}", f"区域: {report.get('zone', '?')}", ""]
@@ -41,9 +42,11 @@ def chat(question: str, report: dict | None) -> str:
     else:
         context = "暂无巡检数据"
 
+    print(f"[CHAT] Context: {context[:200]}...")
     model = GenerativeModel(
         MODELS["chat"],
         system_instruction=[CHAT_SYSTEM_PROMPT.format(context=context)],
     )
     response = model.generate_content(question)
+    print(f"[CHAT] Response: {response.text[:200]}...")
     return response.text

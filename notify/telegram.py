@@ -104,8 +104,10 @@ class TelegramHandler:
                 self.send_message(chat_id, help_text)
 
             else:
+                print(f"[WEBHOOK] Chat message: {text}")
                 report = loop.get_latest_report()
                 response = llm_chat(text, report)
+                print(f"[WEBHOOK] Sending response to {chat_id}")
                 self.send_message(chat_id, response)
         except Exception as e:
             print(f"Webhook error: {e}")
