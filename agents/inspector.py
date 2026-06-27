@@ -3,7 +3,8 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 from agents.prompts import SYSTEM_PROMPT, DEEP_INSPECTION_PROMPT, CHAT_SYSTEM_PROMPT
 
-vertexai.init()
+# Initialize Vertex AI with global region for model availability
+vertexai.init(location="global")
 
 # Model mapping by scenario
 MODELS = {
