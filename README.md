@@ -12,9 +12,9 @@
 </p>
 
 <p align="center">
-  <a href="./gcp-monitoring-agent/README.md">🇺🇸 English (Full Docs)</a> |
-  <a href="./gcp-monitoring-agent/README_cn.md">🇨🇳 中文 (简介)</a> |
-  <a href="./gcp-monitoring-agent/README_jp.md">🇯🇵 日本語 (概要)</a>
+  <a href="README.md">🇺🇸 English (Full Docs)</a> |
+  <a href="README_cn.md">🇨🇳 中文 (简介)</a> |
+  <a href="README_jp.md">🇯🇵 日本語 (概要)</a>
 </p>
 
 ---
@@ -100,9 +100,9 @@ python main.py
 
 | Document | English | 中文 | 日本語 |
 |----------|---------|------|--------|
-| **Main README** | [Full Documentation](./gcp-monitoring-agent/README.md) | [中文简介](./gcp-monitoring-agent/README_cn.md) | [日本語概要](./gcp-monitoring-agent/README_jp.md) |
-| **Deployment Guide** | [DEPLOYMENT_en.md](./gcp-monitoring-agent/DEPLOYMENT_en.md) | [DEPLOYMENT_cn.md](./gcp-monitoring-agent/DEPLOYMENT_cn.md) | [DEPLOYMENT_jp.md](./gcp-monitoring-agent/DEPLOYMENT_jp.md) |
-| **Configuration Guide** | [CONFIGURATION_en.md](./gcp-monitoring-agent/CONFIGURATION_en.md) | [CONFIGURATION_cn.md](./gcp-monitoring-agent/CONFIGURATION_cn.md) | [CONFIGURATION_jp.md](./gcp-monitoring-agent/CONFIGURATION_jp.md) |
+| **Main README** | [Full Documentation](README.md) | [中文简介](README_cn.md) | [日本語概要](README_jp.md) |
+| **Deployment Guide** | [DEPLOYMENT_en.md](DEPLOYMENT_en.md) | [DEPLOYMENT_cn.md](DEPLOYMENT_cn.md) | [DEPLOYMENT_jp.md](DEPLOYMENT_jp.md) |
+| **Configuration Guide** | [CONFIGURATION_en.md](CONFIGURATION_en.md) | [CONFIGURATION_cn.md](CONFIGURATION_cn.md) | [CONFIGURATION_jp.md](CONFIGURATION_jp.md) |
 
 > **Note**: The English documentation is the primary and most comprehensive version. Chinese and Japanese versions provide quick reference with links to full English documentation.
 
@@ -144,7 +144,7 @@ gcp-monitoring-agent/
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see the [English documentation](./gcp-monitoring-agent/README.md) for detailed contribution guidelines.
+Contributions are welcome! Please see the detailed sections below for contribution guidelines.
 
 ---
 
