@@ -1,5 +1,5 @@
 gcp:
-  project_id: "your-gcp-project-id"
+  project_id: "ai-hack-2026-winson"
   region: "us-central1"
   default_zone: "us-central1-a"
 
@@ -9,11 +9,8 @@ thresholds:
   disk_critical: 90
   disk_warning: 80
 
-telegram:
-  bot_token: "YOUR_BOT_TOKEN"
-  chat_id: "YOUR_CHAT_ID"
 
-gcs_bucket: "your-inspection-state-bucket"
+gcs_bucket: "ai-hack-2026-winson-inspection"
 
 budget:
   daily_max_usd: 3.0

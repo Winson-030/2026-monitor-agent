@@ -1,3 +1,4 @@
+import os
 import yaml
 from flask import Flask, request
 from orchestrator import InspectionLoop
@@ -10,8 +11,8 @@ def load_config(path="config.yaml"):
 config = load_config()
 loop = InspectionLoop(config["gcp"]["project_id"], config)
 tg = TelegramHandler(
-    token=config["telegram"]["bot_token"],
-    chat_id=config["telegram"]["chat_id"],
+    token=os.getenv("TELEGRAM_BOT_TOKEN"),
+    chat_id=os.getenv("TELEGRAM_CHAT_ID"),
 )
 
 app = Flask(__name__)

@@ -34,7 +34,8 @@ env/
 
 # Environment variables
 .env
-.env.local
+.env.*
+!.env.example
 
 # Secrets and credentials
 *.json
