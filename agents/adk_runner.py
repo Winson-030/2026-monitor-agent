@@ -27,6 +27,16 @@ async def process_message(user_id: str, session_id: str, text: str) -> str:
     Returns:
         The agent's final text response
     """
+    # Ensure session exists (InMemorySessionService requires explicit creation)
+    try:
+        _session_service.get_session(
+            app_name="gcp_monitor_agent", user_id=user_id, session_id=session_id
+        )
+    except Exception:
+        _session_service.create_session(
+            app_name="gcp_monitor_agent", user_id=user_id, session_id=session_id
+        )
+
     content = Content(role="user", parts=[Part.from_text(text=text)])
     final_text: str = ""
 
