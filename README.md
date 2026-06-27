@@ -31,7 +31,6 @@
 - ☁️ **Cloud Run Deployment** - Serverless architecture with pay-per-use pricing
 - 📁 **State Persistence** - Inspection reports stored in GCS
 - 🔧 **Flexible Configuration** - YAML config + environment variables
-- 🌐 **Web Chat Interface** — Real-time GCP queries via Google ADK web UI
 
 ---
 
@@ -109,62 +108,6 @@ python main.py
 
 ---
 
-## 🌐 Web Chat Interface (New!)
-
-In addition to the Telegram bot, the agent provides a **web-based chat interface** powered by [Google ADK](https://google.github.io/adk-docs/).
-
-### How It Works
-
-The ADK agent (`gcp_monitor_agent`) wraps existing monitoring modules as tools that Gemini 2.5 Flash can invoke based on natural language input.
-
-```mermaid
-flowchart LR
-    User["浏览器"] -->|"adk web / Cloud Run"| WebUI["ADK Web UI"]
-    WebUI -->|"API calls"| Agent["ADK Agent<br/>gcp_monitor_agent"]
-    Agent -->|list_vm_instances| GCE["Compute Engine"]
-    Agent -->|get_vm_metrics| Monitor["Cloud Monitoring"]
-    Agent -->|run_gcloud_query| CLI["gcloud CLI"]
-    Agent -->|get_latest_report| GCS["Cloud Storage"]
-```
-
-### Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `list_vm_instances` | 列出 zone 内所有 VM 实例及状态 |
-| `get_vm_metrics` | 获取单个 VM 的实时 CPU/内存/磁盘 |
-| `get_latest_report` | 读取最新的巡检缓存报告 |
-| `run_gcloud_query` | 执行安全的只读 gcloud 命令 |
-| `query_report` | 基于巡检报告用自然语言问答 |
-
-### Quick Start
-
-```bash
-# Install ADK dependency
-pip install -r requirements-adk.txt
-
-# Start the web UI (run from project root)
-adk web --port 8000
-
-# → Open http://localhost:8000
-# → Select "gcp_monitor_agent" from dropdown
-# → Start chatting!
-```
-
-### Example Questions
-
-```text
-- "现在有几台 VM 在运行？"
-- "列出 us-central1-a 的所有实例"
-- "查看 vm-1 的 CPU 使用率"
-- "最新的巡检报告有什么异常吗？"
-- "执行 gcloud compute instances list"
-```
-
-See [DEPLOYMENT_adk.md](DEPLOYMENT_adk.md) for full deployment guide.
-
----
-
 ## 💰 Cost Estimate
 
 | Item | Monthly Cost |
@@ -183,11 +126,7 @@ See [DEPLOYMENT_adk.md](DEPLOYMENT_adk.md) for full deployment guide.
 gcp-monitoring-agent/
 ├── agents/                 # AI analysis modules
 │   ├── inspector.py       # Gemini analyzer
-│   ├── prompts.py         # System prompts
-│   └── adk_agent/         # ADK web chat agent
-│       ├── agent.py       # Agent definition (gcp_monitor_agent)
-│       ├── tools.py       # Tool functions (5 tools)
-│       └── .env           # Agent environment template
+│   └── prompts.py         # System prompts
 ├── fetcher/               # Data collection modules
 │   └── metrics.py         # GCP metrics fetching
 ├── notify/                # Notification modules
@@ -195,14 +134,10 @@ gcp-monitoring-agent/
 ├── store/                 # Storage modules
 │   └── state_manager.py   # GCS state management
 ├── main.py                # Flask application entry
-├── main_adk.py            # ADK FastAPI entry point
 ├── orchestrator.py        # Inspection orchestration
 ├── config.yaml            # Configuration file
 ├── requirements.txt       # Python dependencies
-├── requirements-adk.txt   # ADK dependencies
-├── Dockerfile             # Container image (Flask)
-├── Dockerfile.adk         # Container image (ADK web)
-├── DEPLOYMENT_adk.md      # ADK deployment guide
+└── Dockerfile             # Container image
 ```
 
 ---
