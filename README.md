@@ -8,32 +8,14 @@
 </p>
 
 <p align="center">
-  <b>🌐 Select Language / 选择语言 / 言語を選択</b>
+  <b>An intelligent GCP resource monitoring system powered by AI</b>
 </p>
 
 <p align="center">
-  <a href="README.md">🇺🇸 English (Full Docs)</a> |
-  <a href="README_cn.md">🇨🇳 中文 (简介)</a> |
-  <a href="README_jp.md">🇯🇵 日本語 (概要)</a>
+  <a href="./gcp-monitoring-agent/README.md">🇺🇸 English (Full Docs)</a> |
+  <a href="./gcp-monitoring-agent/README_cn.md">🇨🇳 中文 (简介)</a> |
+  <a href="./gcp-monitoring-agent/README_jp.md">🇯🇵 日本語 (概要)</a>
 </p>
-
----
-
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Quick Start](#quick-start)
-- [Deployment](#deployment)
-- [Configuration](#configuration)
-- [API Endpoints](#api-endpoints)
-- [Telegram Bot Commands](#telegram-bot-commands)
-- [Project Structure](#project-structure)
-- [Cost Estimate](#cost-estimate)
-- [MVP Scope](#mvp-scope)
-- [Contributing](#contributing)
-- [License](#license)
 
 ---
 
@@ -41,29 +23,14 @@
 
 **GCP Monitoring Agent** is an intelligent GCP resource inspection system deployed on Cloud Run. It periodically collects GCE instance metrics, analyzes them using Gemini 2.5 Flash AI, and sends alerts via Telegram Bot.
 
-### What This MVP Delivers
+### Key Features
 
-This MVP focuses on getting a working system deployed and running:
-
-| Component | Purpose |
-|-----------|---------|
-| **MetricsFetcher** | Deterministic data collection from GCP APIs (zero token cost) |
-| **Inspector** | LLM analysis of metrics → status classification |
-| **GCS State Manager** | Simple file-based persistence |
-| **Telegram Bot** | Interactive alerts and commands |
-
----
-
-## ✨ Features
-
-| Feature | Description |
-|---------|-------------|
-| 🤖 **AI-Powered Analysis** | Smart metric analysis with Gemini 2.5 Flash |
-| 📊 **Automatic Metrics Collection** | Deterministic data collection via GCP Monitoring API |
-| 💬 **Telegram Integration** | Bot interaction with `/status`, `/inspect` commands |
-| ☁️ **Cloud Run Deployment** | Serverless architecture with pay-per-use pricing |
-| 📁 **State Persistence** | Inspection reports stored in GCS |
-| 🔧 **Flexible Configuration** | YAML config + environment variables |
+- 🤖 **AI-Powered Analysis** - Smart metric analysis with Gemini 2.5 Flash
+- 📊 **Automatic Metrics Collection** - Deterministic data collection via GCP Monitoring API
+- 💬 **Telegram Integration** - Interactive Bot with `/status`, `/inspect` commands
+- ☁️ **Cloud Run Deployment** - Serverless architecture with pay-per-use pricing
+- 📁 **State Persistence** - Inspection reports stored in GCS
+- 🔧 **Flexible Configuration** - YAML config + environment variables
 
 ---
 
@@ -109,169 +76,35 @@ flowchart TB
     StateMgr -->|Read Report| GCS
 ```
 
-### Component Reference
-
-| Component | Description | Technologies |
-|-----------|-------------|--------------|
-| **MetricsFetcher** | Collects CPU/disk/status metrics from GCE instances | `google-cloud-monitoring`, `google-cloud-compute` |
-| **Inspector** | Gemini AI analyzes metrics and determines status | `vertexai`, Gemini 2.5 Flash |
-| **GCSStateManager** | Storage and retrieval of inspection reports | `google-cloud-storage` |
-| **TelegramHandler** | Bot message delivery and interaction handling | Telegram Bot API |
-| **Orchestrator** | Inspection workflow orchestration | Python class |
-
 ---
 
 ## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.13+
-- GCP project with APIs enabled
-- Telegram Bot Token
-- GCS Bucket
-
-### Local Development
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/Winson-030/2026-monitor-agent.git
 cd gcp-monitoring-agent
 
-# 2. Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or: venv\Scripts\activate  # Windows
-
-# 3. Install dependencies
+# 2. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure environment variables
+# 3. Configure and run
 cp .env.example .env
 # Edit .env with your configuration
-
-# 5. Run
 python main.py
 ```
 
 ---
 
-## 📦 Deployment
+## 📚 Documentation
 
-### Enable Required APIs
+| Document | English | 中文 | 日本語 |
+|----------|---------|------|--------|
+| **Main README** | [Full Documentation](./gcp-monitoring-agent/README.md) | [中文简介](./gcp-monitoring-agent/README_cn.md) | [日本語概要](./gcp-monitoring-agent/README_jp.md) |
+| **Deployment Guide** | [DEPLOYMENT_en.md](./gcp-monitoring-agent/DEPLOYMENT_en.md) | [DEPLOYMENT_cn.md](./gcp-monitoring-agent/DEPLOYMENT_cn.md) | [DEPLOYMENT_jp.md](./gcp-monitoring-agent/DEPLOYMENT_jp.md) |
+| **Configuration Guide** | [CONFIGURATION_en.md](./gcp-monitoring-agent/CONFIGURATION_en.md) | [CONFIGURATION_cn.md](./gcp-monitoring-agent/CONFIGURATION_cn.md) | [CONFIGURATION_jp.md](./gcp-monitoring-agent/CONFIGURATION_jp.md) |
 
-```bash
-gcloud services enable run.googleapis.com
-gcloud services enable monitoring.googleapis.com
-gcloud services enable compute.googleapis.com
-gcloud services enable storage.googleapis.com
-gcloud services enable aiplatform.googleapis.com
-gcloud services enable cloudbuild.googleapis.com
-```
-
-### Build and Deploy
-
-```bash
-# Build image
-gcloud builds submit --tag gcr.io/$PROJECT_ID/gcp-monitor
-
-# Deploy to Cloud Run
-gcloud run deploy gcp-monitor \
-  --image gcr.io/$PROJECT_ID/gcp-monitor \
-  --region us-central1 \
-  --platform managed \
-  --allow-unauthenticated \
-  --set-env-vars="TELEGRAM_BOT_TOKEN=your-bot-token" \
-  --set-env-vars="TELEGRAM_CHAT_ID=your-chat-id"
-```
-
-See [DEPLOYMENT_en.md](DEPLOYMENT_en.md) for detailed deployment steps.
-
----
-
-## ⚙️ Configuration
-
-### config.yaml
-
-```yaml
-gcp:
-  project_id: "your-project-id"
-  region: "us-central1"
-  default_zone: "us-central1-a"
-
-thresholds:
-  cpu_critical: 90
-  cpu_warning: 80
-  disk_critical: 90
-  disk_warning: 80
-
-gcs_bucket: "your-bucket-name"
-
-budget:
-  daily_max_usd: 3.0
-
-inspection:
-  zones:
-    - "us-central1-a"
-    - "us-central1-b"
-```
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | ✅ | Telegram Bot Token (from @BotFather) |
-| `TELEGRAM_CHAT_ID` | ✅ | Telegram Chat ID |
-| `GOOGLE_CLOUD_PROJECT` | - | GCP Project ID |
-| `GOOGLE_APPLICATION_CREDENTIALS` | - | Service account key path (local dev) |
-
-See [CONFIGURATION_en.md](CONFIGURATION_en.md) for detailed configuration.
-
----
-
-## 🔌 API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/run-inspection` | POST | Run inspection job |
-| `/telegram-webhook` | POST | Telegram Webhook |
-| `/healthz` | GET | Health check |
-
----
-
-## 💬 Telegram Bot Commands
-
-| Command | Description |
-|---------|-------------|
-| `/status` | View latest inspection report |
-| `/inspect <instance>` | View detailed analysis for specific instance |
-| Any text | Smart Q&A based on latest report |
-
----
-
-## 📁 Project Structure
-
-```
-gcp-monitoring-agent/
-├── agents/                 # AI analysis modules
-│   ├── __init__.py
-│   ├── inspector.py       # Gemini analyzer
-│   └── prompts.py         # System prompts
-├── fetcher/               # Data collection modules
-│   ├── __init__.py
-│   └── metrics.py         # GCP metrics fetching
-├── notify/                # Notification modules
-│   ├── __init__.py
-│   └── telegram.py        # Telegram Bot
-├── store/                 # Storage modules
-│   ├── __init__.py
-│   └── state_manager.py   # GCS state management
-├── main.py                # Flask application entry
-├── orchestrator.py        # Inspection orchestration
-├── config.yaml            # Configuration file
-├── requirements.txt       # Python dependencies
-├── Dockerfile             # Container image
-└── .env.example           # Environment variables example
-```
+> **Note**: The English documentation is the primary and most comprehensive version. Chinese and Japanese versions provide quick reference with links to full English documentation.
 
 ---
 
@@ -282,56 +115,42 @@ gcp-monitoring-agent/
 | Cloud Run (1 vCPU, 512MB, 200 requests/day) | ~$5-8 |
 | Cloud Scheduler (3 jobs) | ~$0.50 |
 | GCS (report storage) | $0 |
-| Gemini Flash API (~500 targets/day, ~50 tokens/analysis) | ~$0.30 |
+| Gemini Flash API (~500 targets/day) | ~$0.30 |
 | **Total** | **~$6-9/month** |
-
-Cheaper than a VM, 10x less ops than self-hosted Prometheus.
 
 ---
 
-## 📋 MVP Scope
+## 📂 Project Structure
 
-### Keep vs Phase 2
-
-| Component | MVP Status | Reason |
-|-----------|------------|----------|
-| `fetcher/metrics.py` | ✅ **Keep** | Core data collection - no data without it |
-| `agents/inspector.py` | ✅ **Keep** | LLM analysis core |
-| `orchestrator.py` | ✅ **Keep** | Orchestrates fetch → analyze → store |
-| `store/state_manager.py` | ✅ **Keep** | Simple GCS file storage |
-| `notify/telegram.py` | ✅ **Keep** | Only interaction interface |
-| `agents/verifier.py` | 🔄 **Phase 2** | Double cost - trust single analysis for MVP |
-| Self-monitoring metrics | 🔄 **Phase 2** | Cloud Run has built-in logs |
-| Circuit Breaker | 🔄 **Phase 2** | No retries = no breaker needed |
-| Per-target files | 🔄 **Phase 2** | Single file sufficient for 50 targets |
-| Natural language Q&A | 🔄 **Phase 2** | MVP focuses on `/status` + `/inspect` |
+```
+gcp-monitoring-agent/
+├── agents/                 # AI analysis modules
+│   ├── inspector.py       # Gemini analyzer
+│   └── prompts.py         # System prompts
+├── fetcher/               # Data collection modules
+│   └── metrics.py         # GCP metrics fetching
+├── notify/                # Notification modules
+│   └── telegram.py        # Telegram Bot
+├── store/                 # Storage modules
+│   └── state_manager.py   # GCS state management
+├── main.py                # Flask application entry
+├── orchestrator.py        # Inspection orchestration
+├── config.yaml            # Configuration file
+├── requirements.txt       # Python dependencies
+└── Dockerfile             # Container image
+```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome all forms of contributions!
-
-1. **Fork** this repository
-2. Create your **Feature Branch** (`git checkout -b feature/AmazingFeature`)
-3. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
-4. **Push** to the branch (`git push origin feature/AmazingFeature`)
-5. Open a **Pull Request**
+Contributions are welcome! Please see the [English documentation](./gcp-monitoring-agent/README.md) for detailed contribution guidelines.
 
 ---
 
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
-
----
-
-## 📚 Documentation
-
-- [中文文档 (Chinese)](README_cn.md) - Quick reference
-- [日本語ドキュメント (Japanese)](README_jp.md) - Quick reference
-- [Deployment Guide](DEPLOYMENT_en.md)
-- [Configuration Guide](CONFIGURATION_en.md)
 
 ---
 

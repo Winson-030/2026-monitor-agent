@@ -8,9 +8,9 @@ vertexai.init(location="global")
 
 # Model mapping by scenario
 MODELS = {
-    "standard": "gemini-3.5-flash",      # Fast, cost-effective for routine checks
-    "deep": "gemini-3.1-pro-preview",     # Advanced reasoning for deep analysis
-    "chat": "gemini-3.5-flash",           # Quick responses for Telegram Q&A
+    "standard": "gemini-2.5-flash",      # Fast, cost-effective for routine checks
+    "deep": "gemini-2.5-flash",          # Use same model for now (3.1-pro not available in us-central1)
+    "chat": "gemini-2.5-flash",           # Quick responses for Telegram Q&A
 }
 
 
