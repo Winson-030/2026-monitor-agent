@@ -103,6 +103,37 @@ async def telegram_webhook(request: Request):
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
 
+@app.on_event("startup")
+async def start_background_watcher():
+    """Start the background VM metrics watcher on app startup."""
+    try:
+        config = get_config()
+        from scheduler import create_watcher
+        watcher = create_watcher(
+            project_id=config["gcp"]["project_id"],
+            bucket=config.get("gcs_bucket", ""),
+            zones=config.get("inspection", {}).get("zones", ["us-central1-a"]),
+            interval_sec=60,
+        )
+        await watcher.start()
+        print(f"[WATCHER] Started: project={config['gcp']['project_id']}, zones={config.get('inspection', {}).get('zones')}")
+    except Exception as e:
+        print(f"[WATCHER] Failed to start: {e}")
+
+
+@app.on_event("shutdown")
+async def stop_background_watcher():
+    """Stop the background watcher on app shutdown."""
+    try:
+        from scheduler import get_watcher
+        watcher = get_watcher()
+        if watcher:
+            await watcher.stop()
+            print("[WATCHER] Stopped")
+    except Exception as e:
+        print(f"[WATCHER] Failed to stop: {e}")
+
+
 @app.get("/health")
 async def health():
     return {

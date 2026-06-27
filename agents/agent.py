@@ -154,6 +154,30 @@ def run_gcloud_query(command: str) -> str:
         return json.dumps({"error": f"命令执行异常: {str(e)}"})
 
 
+def get_active_alerts() -> str:
+    """获取当前活跃的 VM 告警列表（由后台监控器持续检测）。
+
+    后台监控器每 60 秒扫描所有 RUNNING VM 的 CPU、内存、磁盘指标，
+    超过阈值自动生成告警，恢复后自动清除。
+
+    当用户询问"有什么告警""有没有异常""现在有问题吗"时优先使用此工具。
+
+    Returns:
+        JSON 格式的告警列表，包含 VM 名称、触发指标、当前值、阈值、严重级别
+    """
+    try:
+        from scheduler import get_watcher
+        watcher = get_watcher()
+        if watcher is None:
+            return json.dumps({"message": "后台监控器未启动", "alerts": []})
+        alerts = watcher.get_alerts()
+        if not alerts:
+            return json.dumps({"message": "✅ 当前没有活跃告警，所有 VM 指标正常", "alerts": []})
+        return json.dumps({"alerts": alerts}, indent=2, default=str)
+    except Exception as e:
+        return json.dumps({"error": str(e), "alerts": []})
+
+
 def query_report(question: str) -> str:
     """基于最新的 GCP 巡检报告，用自然语言回答用户的问题。
 
@@ -185,14 +209,17 @@ root_agent = Agent(
 2. **get_vm_metrics(instance_name, zone)** — 获取单个 VM 的实时 CPU/内存/磁盘指标
 3. **get_latest_report()** — 获取最新的巡检报告（缓存数据，每 5 分钟更新一次）
 4. **run_gcloud_query(command)** — 执行只读 gcloud CLI 命令获取实时数据
-5. **query_report(question)** — 基于最新巡检报告回答自然语言问题
+5. **get_active_alerts()** — 获取当前活跃的 VM 告警（后台每 60 秒自动检测，实时告警）
+6. **query_report(question)** — 基于最新巡检报告回答自然语言问题
 
 ## 使用指南
 
+- **告警优先**: 对于"有什么告警""有没有异常""现在有问题吗"，首先使用 get_active_alerts
 - **实时数据优先**: 对于"现在有几台 VM 在跑""有哪些实例"等问题，优先使用 list_vm_instances
 - **指标查询**: 对于特定 VM 的 CPU/内存/磁盘，使用 get_vm_metrics
 - **复杂查询**: 如果现有工具不满足需求，使用 run_gcloud_query（如 Cloud Run、GKE 等）
 - **巡检报告**: 对于"有什么异常""哪个机器有问题"，使用 get_latest_report 或 query_report
+- **主动检查**: 每次对话开始时，主动调用 get_active_alerts() 检查是否有告警
 
 ## 安全规则
 
@@ -211,6 +238,7 @@ root_agent = Agent(
         list_vm_instances,
         get_vm_metrics,
         get_latest_report,
+        get_active_alerts,
         run_gcloud_query,
         query_report,
     ],

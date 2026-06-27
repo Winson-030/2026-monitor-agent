@@ -17,3 +17,25 @@ class GCSStateManager:
         if not self.blob.exists():
             return None
         return json.loads(self.blob.download_as_string())
+
+    # ── Alert persistence ───────────────────────────────
+    ALERTS_FILE = "alerts/active_alerts.json"
+
+    def _init_alerts_blob(self):
+        self.alerts_blob = self.bucket.blob(self.ALERTS_FILE)
+
+    def save_alerts(self, alerts: list[dict]):
+        """Persist active alerts to GCS."""
+        payload = {
+            "alerts": alerts,
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+        self.alerts_blob.upload_from_string(json.dumps(payload, indent=2))
+
+    def load_alerts(self) -> dict | None:
+        """Load active alerts from GCS."""
+        if not hasattr(self, "alerts_blob"):
+            self._init_alerts_blob()
+        if not self.alerts_blob.exists():
+            return None
+        return json.loads(self.alerts_blob.download_as_string())
