@@ -4,12 +4,13 @@ from agents.inspector import Inspector
 from store.state_manager import GCSStateManager
 
 class InspectionLoop:
-    def __init__(self, project_id: str, config: dict):
+    def __init__(self, project_id: str, config: dict, mode: str = "standard"):
         self.project_id = project_id
         self.config = config
         self.fetcher = MetricsFetcher(project_id)
-        self.inspector = Inspector()
+        self.inspector = Inspector(mode=mode)
         self.state = GCSStateManager(config["gcs_bucket"])
+        self.mode = mode
 
     def run(self, zone: str = "us-central1-a") -> dict:
         raw = self.fetcher.fetch(zone)

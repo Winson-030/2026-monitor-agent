@@ -43,9 +43,15 @@ from notify.telegram import format_report, format_alert
 def run_inspection():
     try:
         config = get_config()
-        loop = get_loop()
+        data = request.get_json(silent=True) or {}
+        zone = data.get("zone", config["gcp"]["default_zone"])
+        mode = data.get("mode", "standard")  # standard or deep
+
+        # Create loop with the specified mode
+        from orchestrator import InspectionLoop
+        loop = InspectionLoop(config["gcp"]["project_id"], config, mode=mode)
         tg = get_tg()
-        zone = request.json.get("zone", config["gcp"]["default_zone"]) if request.is_json else config["gcp"]["default_zone"]
+
         report = loop.run(zone=zone)
 
         findings = [
@@ -55,7 +61,7 @@ def run_inspection():
         if findings:
             tg.send_alert(format_alert(findings))
 
-        return {"status": "ok", "targets": len(report["results"])}
+        return {"status": "ok", "mode": mode, "targets": len(report["results"])}
     except Exception as e:
         import traceback
         traceback.print_exc()
